@@ -25,8 +25,11 @@ class FEAHW2():
         v = 0.3
         n = 50 # elements
 
-        x = np.linspace(0, L, n+1):
-        y = [p1_u(xi) for xi in x]
+        # x = np.linspace(0, L, n+1)
+        # y = [p1_u(xi) for xi in x]
+
+    def uj(self, x, ui):
+        pass
 
     # Problem 2 Plotting: call on the functions
     def p2(self, x, N1, N2):
