@@ -1,7 +1,7 @@
 '''
 Spring 2021 AE 4132 HW2
 author: yjia67
-last updated: 02-22-2021
+last updated: 02-24-2021
 '''
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,14 +25,64 @@ class FEAHW2():
         v = 0.3
         n = 50 # elements
 
-        # x = np.linspace(0, L, n+1)
-        # y = [p1_u(xi) for xi in x]
+        # Define the spring constant (same for all elements)
+        le = L/n
+        ke = E*A
 
-    def uj(self, x, ui):
-        pass
+        u = self.p1_compute_u(ke, n)
+
+        # Plot the piecewise functions
+
+
+    def p1_compute_u(self, ke, n):
+        '''
+        Compute the u_i values from the matrix that represent the system of equations
+        of the partial derivatives of Pi_hat
+
+        The coefficient matrix is formatted as the following:
+        [[ 0,  0,  0,  0, ... ,  0,  0],
+         [ 0,  2, -1,  0, ... ,  0,  0],
+         [ 0, -1,  2, -1, ... ,  0,  0],
+                ... ...
+         [ 0,  0,  0,  0, ... , -1,  1]]
+
+
+        input:  ke = spring constant
+                n = # of elements
+        output: u = 1D np.Array of coefficients in linear approximation
+
+        '''
+        # Initialize an NxN matrix where N = # of elements
+        mat = np.zeros((n, n))
+
+        # Loop from 1:n and populate the matrix and solve for constants (u_i)
+        # Since we know u1 = 0 from the B.C., the first column will remain 0
+        for i in range(1, n-1):
+            mat[i][i-1:i+2] = [-1, 2, -1]
+
+        # Manually set the first column of the second row to 0
+        # Manually set the last row of the matrix to [..., -1, 1]
+        # Multiply everything by ke & remove the first row and first column (all 0s)
+        mat[1][0] = 0
+        mat[-1][-2:] = [-1, 1]
+       
+        mat = ke*mat[1:, 1:]
+        u, v = np.linalg.eig(mat)
+        
+        # Insert u1=0 at the start of the array
+        u = np.insert(u, 0, 0.0)
+
+        return u
 
     # Problem 2 Plotting: call on the functions
     def p2(self, x, N1, N2):
+        '''
+        Plotting everything on the same plot:
+        Case 1: Quadratic Rayleigh-Ritz
+                Governing Equation
+                Linear Rayleigh-Ritz
+        Case 2: same dealio
+        '''
 
         plt.plot(x, list(map(N1, x)), color='k', ls='-', label='1: quad. RR')
         plt.plot(x, list(map(N1, x)), color='r', ls='--', label='1: gov. eqn')
@@ -51,27 +101,29 @@ class FEAHW2():
     # Problem 2 Case 1
     def p2_N1(self, x):
 
-        if ((0 <= x) & (x <= 4*12)):
+        if (x <= 4*12):
             return 90-x
-        elif (x <= 8*12):
-            return -6+x
         else:
-            return
+            return -6+x
 
     # Problem 2 Case 2
     def p2_N2(self, x):
 
-        if ((0 <= x) & (x <= 4*12)):
+        if (x <= 4*12):
             return 24-x
-        elif (x <= 8*12):
-            return -72+x
         else:
-            return
+            return -72+x
 
 if __name__ == '__main__':
 
     hw2 = FEAHW2()
 
+    ### PROBLEM 1 ###
+    hw2.p1_4()
+
     ### PROBLEM 2 ###
-    x1 = np.arange(0.0, 8.0*12, 0.01)
-    hw2.p2(x1, hw2.p2_N1, hw2.p2_N2)
+    # define range for x
+    # x1 = np.arange(0.0, 8.0*12, 0.01)
+    # hw2.p2(x1, hw2.p2_N1, hw2.p2_N2)
+
+    ### PROBLEM 3 ###
