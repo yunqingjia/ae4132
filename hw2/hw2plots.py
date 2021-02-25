@@ -6,16 +6,13 @@ last updated: 02-24-2021
 import numpy as np
 import matplotlib.pyplot as plt
 
-# why did i write this in an abstrac / object-oriented manner lol
-# don't / won't do it again
-
 class FEAHW2():
 
     def __init__(self):
         pass
 
     # Problem 1.4
-    def p1_4(self):
+    def p1_4(self, x):
         # Define the input parameters for the specific case
         P = 400 # N
         q = 100 # N/m
@@ -24,15 +21,26 @@ class FEAHW2():
         E = 70e9 # Pa
         v = 0.3
         n = 50 # elements
-
-        # Define the spring constant (same for all elements)
-        le = L/n
-        ke = E*A
+        le = L/n # length of each element
+        ke = E*A/le
 
         u = self.p1_compute_u(ke, n)
 
-        # Plot the piecewise functions
+        #######################################################
+        # I was able to compute all the coefficients 
+        # but ran out of time trying to figure out how to plot
+        #######################################################
 
+        # Plot the piecewise functions
+        # x_lst = np.arange()
+        # y_lst = np.array([])
+        # for i in range(n-1):
+        #     x = np.arange(i*le, (i+1)*le, 1)
+        #     print(x)
+        #     y = np.array([self.p1_uhat(xi, u[i], u[i+1], i, le) for xi in x])
+        #     x_lst = np.append(x_lst, x)
+        #     y_lst = np.append(y_lst, y)
+        # print(x_lst.shape)
 
     def p1_compute_u(self, ke, n):
         '''
@@ -74,6 +82,11 @@ class FEAHW2():
 
         return u
 
+    # Define the piecewise displacement function
+    def p1_uhat(self, x, u1, u2, i, le):
+        uhat = u1 + (u2-u1)/le*(x-i*le)
+        return uhat
+
     # Problem 2 Plotting: call on the functions
     def p2(self, x, N1, N2):
         '''
@@ -114,16 +127,38 @@ class FEAHW2():
         else:
             return -72+x
 
+    # Problem 3
+    def p3(self, b, P1, P2):
+
+        plt.plot(b, list(map(P1, b)), color='k', ls='-', label='1: quad. RR')
+        plt.plot(b, list(map(P2, b)), color='b', ls='-', label='2: trig. RR')
+        plt.xlabel(r'$\beta$')
+        plt.ylabel(r'$\Pi(x)$')
+        plt.legend()
+        plt.title('HW2 Problem 3')
+        plt.savefig('hw2p3.png')
+        plt.show()
+
+
+    def p3_pi1(self, beta):
+        return -5/216*np.square(1+3*beta)
+
+    def p3_pi2(self, beta):
+        pi = np.pi
+        return -80*np.square(-2+pi+pi*beta)/(3*pi**6)
+
 if __name__ == '__main__':
 
     hw2 = FEAHW2()
 
     ### PROBLEM 1 ###
-    hw2.p1_4()
+    x1 = np.arange(0.0, 2.0, 0.01)
+    hw2.p1_4(x1)
 
     ### PROBLEM 2 ###
-    # define range for x
-    # x1 = np.arange(0.0, 8.0*12, 0.01)
-    # hw2.p2(x1, hw2.p2_N1, hw2.p2_N2)
+    x2 = np.arange(0.0, 8.0*12, 0.01)
+    hw2.p2(x2, hw2.p2_N1, hw2.p2_N2)
 
     ### PROBLEM 3 ###
+    beta = np.arange(-10, 10, 0.01)
+    hw2.p3(beta, hw2.p3_pi1, hw2.p3_pi2)
