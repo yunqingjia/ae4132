@@ -1,9 +1,16 @@
 '''
 Spring 2021 AE 4132 HW4: finite element program implementation from scratch
+    NOTE:   very simplified version with a lot of assumptions:
+            - 1-D bars in 2D plane
+            - uniaxial stress
+            - linearly elastic material
+    Also note: not the most efficient implementation 
+               could probably store nodes and elements as lists of dictionary objects instead
 author: yjia67
-last updated: 03-24-2021
+last updated: 03-25-2021
 '''
 import numpy as np
+from matplotlib import colors
 import matplotlib.pyplot as plt
 import argparse
 import cmd
@@ -16,6 +23,7 @@ class FEAHW4():
     def read_input(self, filename: str):
         '''
         Parse the input text file into matrices
+
         Text file format:
             nnodes
             x_1 y_1 rx_1 ry_1 fx_1 fy_1
@@ -64,6 +72,7 @@ class FEAHW4():
     def solve_fea(self, nodes: np.ndarray, els: np.ndarray):
         '''
         Put everything together
+
         Args:
             - nodes:    (nnodes, 6) np array containing nodal info
                         [x_i, y_i, rx_i, ry_i, fx_i, fy_i] for each node i
@@ -93,6 +102,7 @@ class FEAHW4():
 
         # solve for reaction forces
         rxn = k_global @ u
+
         return u, rxn
 
     def compute_K(self, x: np.ndarray, y: np.ndarray, els: np.ndarray):
@@ -117,9 +127,9 @@ class FEAHW4():
 
         # loop through each element to construct the global stiffness matrix
         k_global = np.zeros((2*len(nodes), 2*len(nodes)))
-        for i in range(len(els)):
+        for el in els:
 
-            n1, n2, E, A = els[i]
+            n1, n2, E, A = el
             # convert to int for indexing, which starts at 0 lol
             n1, n2 = int(n1-1), int(n2-1)
 
@@ -145,6 +155,7 @@ class FEAHW4():
     def compute_F(self, fx: np.ndarray, fy: np.ndarray):
         '''
         Construct the force vector without boundary conditions
+
         Args:
             - fx:   (nnodes, ) np array containing force_x for each node
             - fy:   (nnodes, ) np array containing force_y for each node
@@ -160,6 +171,7 @@ class FEAHW4():
     def apply_BC(self, rx: np.ndarray, ry: np.ndarray, k_global: np.ndarray, f: np.ndarray):
         '''
         Apply displacement boundary conditions to both the stiffness matrix and the force vector
+
         Args:
             - nodes:    a size (nnodes, 6) numpy array containing nodal info
                         [x_i, y_i, rx_i, ry_i, fx_i, fy_i] for node i
@@ -179,7 +191,6 @@ class FEAHW4():
             if ry[i] == 1:
                 idx.append(2*i+1)
 
-
         k_global = np.delete(k_global, obj=idx, axis=0)
         k_global = np.delete(k_global, obj=idx, axis=1)
         f = np.delete(f, idx)
@@ -192,6 +203,7 @@ class FEAHW4():
     def compute_R(self, theta: float):
         '''
         Compute rotational matrix for a given theta
+
         Args:
             - theta: angle between the element coordinate and the global coordinate axes
         Returns:
@@ -205,31 +217,117 @@ class FEAHW4():
                         [ -c*s,  -s**2,    c*s,   s**2]])
         return R
 
+    def print_result(self, u: np.ndarray, rxn: np.ndarray):
+        '''
+        Print the nodal displacement and force vectors in easy-to-read manner
+
+        Args:
+            - u:    (nnodes, ) np array containing nodal displacements
+            - rxn:  (nnodes, ) np array containing force information
+        '''
+        print('\t displacement \t force')
+        print('\t u (m) \t\t f (N)')
+        for i in range(len(u)):
+            n = i+1
+            if (n%2 == 1):
+                print('node%dx:\t %0.5f \t %0.2f' % ((n+1)//2, u[i], rxn[i]))
+            else:
+                print('node%dy:\t %0.5f \t %0.2f' % (n//2, u[i], rxn[i]))
+
+    def plot_results(self, u: np.ndarray, rxn: np.ndarray, nodes: np.ndarray, els: np.ndarray, scl: int):
+        '''
+        Plot the original structure and the deformed structure
+
+        Args:
+            - u:    (nnodes, ) np array containing nodal displacements
+            - rxn:  (nnodes, ) np array containing force information
+            - nodes:    (nnodes, 6) np array containing nodal info
+                        [x_i, y_i, rx_i, ry_i, fx_i, fy_i] for each node i
+            - els:      (nels, 4) np array containing elemental info
+                        [n1_i, n2_i, E_i, A_i] for each element i
+        '''
+        x, y, _, _, _, _ = nodes.T
+        fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1) # in case i want multiple plots
+
+        ax1.set_aspect('equal')
+        x_def, y_def = x + u[::2], y +  u[1::2]
+        x_plt, y_plt = x + scl*u[::2], y + scl*u[1::2]
+        stress = []
+
+        for el in els:
+            n1, n2, E, A = el
+            n12 = [int(n1-1), int(n2-1)]
+
+            # compute stress in each bar
+            [x1, x2], [y1, y2] = x[n12], y[n12]
+            [xd1, xd2], [yd1, yd2] = x_def[n12], y_def[n12]
+            [xplt1, xplt2], [yplt1, yplt2] = x_plt[n12], y_plt[n12]
+
+            l = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+            ld = np.sqrt((xd2-xd1)**2 + (yd2-yd1)**2)
+            ld_plt = np.sqrt((xplt2-xplt1)**2 + (yplt2-yplt1)**2)
+            stress.append(E*ld_plt)
+
+            # determine compression (shortening) vs tension (elongation)
+            ax1.plot(x[n12], y[n12], color='gray')
+            if (ld == l): # net force zero
+                ax1.plot(x_plt[n12], y_plt[n12], color='k')
+            elif (ld > l): # tension
+                ax1.plot(x_plt[n12], y_plt[n12], color='r')
+            elif (ld < l): # compression
+                ax1.plot(x_plt[n12], y_plt[n12], color='b')
+
+        ax1.set_xlabel(r'$x$ (m)')
+        ax1.set_ylabel(r'$y$ (m)')
+        ax1.set_title('Unloaded vs Loaded (red=tension, blue=compression)\nDisplacement Scale=%d' % scl)
+
+        # not the most efficicent implementation but o well
+
+        ax2.set_aspect('equal')
+        s_max, s_min = max(stress), min(stress)
+        cm = plt.get_cmap('jet')
+        stress = np.array(stress).reshape(len(stress),1)
+        els_stress = np.hstack((els, stress))
+        for el in els_stress:
+            n1, n2, E, A, s = el
+            n12 = [int(n1-1), int(n2-1)]
+            f = (s-s_min) / (s_max-s_min)
+            color = cm(f)
+            ax2.plot(x_plt[n12], y_plt[n12], '-', color=color)
+
+        ax2.set_xlabel(r'$x$ (m)')
+        ax2.set_ylabel(r'$y$ (m)')
+        ax2.set_title('Element Stresses in Deformed Configuration\nDisplacement Scale=%d' %  scl)
+        plt.tight_layout()
+
+        # add the color bar
+        s_scale = 1e-9
+        norm = colors.Normalize(vmin=s_scale*s_min, vmax=s_scale*s_max)
+        sm = plt.cm.ScalarMappable(cmap=cm, norm=norm)
+        sm.set_array([s_min, s_max])
+        cb = plt.colorbar(sm)
+        cb.set_label('Stress (GPa)')
+
+        figname = input('Save the deformed structure plot as (without the .jpg extension): ')
+        
+
+        plt.savefig(figname+'.jpg')
+
+        plt.show()
+
 if __name__ == '__main__':
 
     hw4 = FEAHW4()
 
     filename = input('Enter input filename (without the .txt extension): ')
 
-    # # Simply supported triangle case:
-    # filename = 'simp_triangle.txt'
-
-    # # HW4 Figure 1 Case 1:
-    # filename = 'hw4_case1.txt'
-
-    # # HW4 Figure 1 Case 2:
-    # filename = 'hw4_case2.txt'
-
     try:
         nodes, els = hw4.read_input(filename + '.txt')
         u, rxn = hw4.solve_fea(nodes, els)
 
-        print('Nodal displacement vector:')
-        # [:, np.newaxis]
-        print(np.round(u,5))
-
-        print('Force vector including reactions:')
-        print(np.round(rxn,5))
+        disp_scale = 10 # scale the displacement for better visualization
+        hw4.print_result(u, rxn)
+        hw4.plot_results(u, rxn, nodes, els, disp_scale)
 
     except FileNotFoundError:
         print('Error: file not found.')
