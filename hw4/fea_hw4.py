@@ -89,7 +89,9 @@ class FEAHW4():
         k_global = self.compute_K(x, y, els)
 
         # construct force vector
-        f = self.compute_F(fx, fy)
+        f = np.zeros(2*len(fx))
+        f[::2] = fx
+        f[1::2] = fy
 
         # apply boundary conditions
         k_global_r, f_r, idx = self.apply_BC(rx, ry, k_global, f)
@@ -148,25 +150,11 @@ class FEAHW4():
             k_global[i21:i22, i11:i12] += k_el[-2:, :2]
             k_global[i21:i22, i21:i22] += k_el[-2:, -2:]
 
+        print(np.round(k_global, 2))
+
         assert np.allclose(k_global, k_global.T, atol = 1e-03) # check symmetry
 
         return k_global
-
-    def compute_F(self, fx: np.ndarray, fy: np.ndarray):
-        '''
-        Construct the force vector without boundary conditions
-
-        Args:
-            - fx:   (nnodes, ) np array containing force_x for each node
-            - fy:   (nnodes, ) np array containing force_y for each node
-        Returns:
-            - f:    (2*nnodes, 1) np array that represents the force vector
-                    [fx_1, fy_1, ..., fx_n, fy_n]
-        '''
-        f = np.zeros(2*len(fx))
-        f[::2] = fx
-        f[1::2] = fy
-        return f
 
     def apply_BC(self, rx: np.ndarray, ry: np.ndarray, k_global: np.ndarray, f: np.ndarray):
         '''
@@ -216,6 +204,13 @@ class FEAHW4():
                         [-c**2,   -c*s,   c**2,    c*s],
                         [ -c*s,  -s**2,    c*s,   s**2]])
         return R
+
+    def compute_stress(self, x: np.ndarray, y: np.ndarray, u:np.ndarray, scl:int):
+        '''
+        Compute the stress in each element and the min / max stresses for computing
+        '''
+        x_def, y_def = x + u[::2], y + u[1::2]
+        
 
     def print_result(self, u: np.ndarray, rxn: np.ndarray):
         '''
@@ -299,6 +294,9 @@ class FEAHW4():
         ax2.set_ylabel(r'$y$ (m)')
         ax2.set_title('Element Stresses in Deformed Configuration\nDisplacement Scale=%d' %  scl)
         plt.tight_layout()
+
+        print(s_min)
+        print(s_max)
 
         # add the color bar
         s_scale = 1e-9
