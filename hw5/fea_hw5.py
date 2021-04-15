@@ -169,23 +169,41 @@ def compute_stress_strain(nodes: pd.DataFrame, els: pd.DataFrame):
 
         # epsx = (ux2-ux1)/a + ((ux3-ux4)/(a*b) - (ux2-ux1)/(a*b))
 
-def plot_results(nodes: pd.DataFrame, els: pd.DataFrame):
+def plot_results(filename: str, nodes: pd.DataFrame, els: pd.DataFrame):
     '''
     Plot computed results
-    # 1a) show deformed configuration
-    # 1b) contour plots of all components of strain and stress over domain
-    # 2a) max. nodal displacement over the domain
-    # 2b) max. von Mises stress over the domain
-    # 2c) strain energy of the entire beam
     '''
+    # 1a) show deformed configuration
+    scl = 150
+    for i in range(len(els)):
+        coords = [els.n1[i], els.n2[i], els.n3[i], els.n4[i]]
+        x, y = nodes.x[coords], nodes.y[coords]
+        x_plt, y_plt = x+scl*nodes.ux[coords], y+scl*nodes.uy[coords]
+        plt.fill(x, y, edgecolor='black', fill=False, label='undeformed')
+        plt.fill(x_plt, y_plt, edgecolor='red', fill=False, label='deformed')
+
+    
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Deformed Configuration (displacement scale = %d)' % scl)
+    plt.savefig('hw5_' + filename + '_1a_deformed_configuration.jpg')
+    plt.show()
+
+    # 1b) contour plots of all components of strain and stress over domain
+
+    # 2a) max. nodal displacement over the domain
+
+    # 2b) max. von Mises stress over the domain
+
+    # 2c) strain energy of the entire beam
 
 
-def solve_fea():
+
+def solve_fea(fn):
     '''
     The main function called to execute other methods
     '''
     ########## read input ########################
-    fn = input('Input filename (without the .msh extension): ')
     nodes, els = read_input(fn + '.msh')
 
     ########## compute stiffness matrix ##########
@@ -206,31 +224,29 @@ def solve_fea():
         u = np.insert(u, i, 0)
     nodes['ux'] = u[::2]
     nodes['uy'] = u[1::2]
-    nodes['xdef'] = nodes.x + nodes.ux
-    nodes['ydef'] = nodes.y + nodes.uy
+    # nodes['xdef'] = nodes.x + nodes.ux
+    # nodes['ydef'] = nodes.y + nodes.uy
 
     ########## compute reaction forces ###########
     rxn = k @ u
-    nodes['fx_rxn'] = rxn[::2]
-    nodes['fy_rxn'] = rxn[1::2]
+    # nodes['fx_rxn'] = rxn[::2]
+    # nodes['fy_rxn'] = rxn[1::2]
     print(nodes)
 
     ########## compute strain ####################
-    els = compute_stress_strain(nodes, els)
+    # els = compute_stress_strain(nodes, els)
 
     ########## compute stress ####################
 
     ########## plot results ######################
-    # 1a) show deformed configuration
-    # 1b) contour plots of all components of strain and stress over domain
-    # 2a) max. nodal displacement over the domain
-    # 2b) max. von Mises stress over the domain
-    # 2c) strain energy of the entire beam    
+    plot_results(fn, nodes, els)
     
 
 if __name__ == '__main__':
     try:
-        solve_fea()
+        fn = ['1x1', '2x2', '4x4', '8x8', '16x16']
+        for fn_ in fn:
+            solve_fea(fn_)
     except FileNotFoundError:
         print('Error: file not found.')
     except ValueError:
